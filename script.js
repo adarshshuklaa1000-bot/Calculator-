@@ -1,0 +1,51 @@
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const names={dashboard:"Dashboard",calculator:"Calculator",scientific:"Scientific",finance:"Finance Tools",converter:"Converters",math:"Math Tools",date:"Date & Age",history:"History",settings:"Settings",about:"About"};
+function show(id){$$(".page").forEach(x=>x.classList.toggle("active",x.id===id));$$(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===id));$("#title").textContent=names[id];$("#sidebar").classList.remove("open");if(id==="history")renderHistory()}
+$$(".nav").forEach(x=>x.onclick=()=>show(x.dataset.page));$("#menu").onclick=()=>$("#sidebar").classList.toggle("open");
+$("#theme").onclick=()=>{document.body.classList.toggle("light");save("theme",document.body.classList.contains("light")?"light":"dark");$("#themeSelect").value=document.body.classList.contains("light")?"light":"dark"};
+if(localStorage.getItem("theme")==="light")document.body.classList.add("light");
+const tools=[["＋","Basic Calculator","Fast arithmetic, memory and keyboard support.","calculator"],["∑","Scientific","Trig, logs, powers, factorial and constants.","scientific"],["₹","Finance","EMI, SIP, GST, interest, discount and profit.","finance"],["⇄","Converters","Length, weight, temperature, data and more.","converter"],["√","Math Tools","HCF, LCM, fractions, primes and equations.","math"],["◷","Date & Age","Age and date difference utilities.","date"]];
+$("#quickTools").innerHTML=tools.map(t=>`<article class="tool-card" onclick="show('${t[3]}')"><div class="ico">${t[0]}</div><h3>${t[1]}</h3><p>${t[2]}</p><b>Open tool →</b></article>`).join("");
+
+let expr="",memory=0,history=JSON.parse(localStorage.getItem("history")||"[]"),precision=Number(localStorage.getItem("precision")||8);
+function fmt(n){if(!Number.isFinite(n))return"Error";return Number(n.toPrecision(precision)).toString()}
+function evaluate(s){if(!/^[0-9+*/().%\\s-]+$/.test(s))throw 0;return Function('"use strict";return ('+s.replace(/(\\d+(?:\\.\\d+)?)%/g,"($1/100)")+')')()}
+function addHist(e,r){history.unshift({e,r,t:new Date().toLocaleString()});history=history.slice(0,100);localStorage.setItem("history",JSON.stringify(history));renderMini()}
+function calc(){if(!expr)return;try{let r=fmt(evaluate(expr));$("#calcExpr").textContent=expr;$("#calcOut").textContent=r;addHist(expr,r)}catch{$("#calcOut").textContent="Error"}}
+$$(".keys button").forEach(b=>b.onclick=()=>{let v=b.dataset.v,a=b.dataset.a;if(a==="clear"){expr="";$("#calcExpr").textContent="";$("#calcOut").textContent="0"}else if(a==="back"){expr=expr.slice(0,-1);$("#calcExpr").textContent=expr;$("#calcOut").textContent=expr||"0"}else if(a==="equal")calc();else if(v){expr+=v;$("#calcExpr").textContent=expr}});
+document.addEventListener("keydown",e=>{if(!$("#calculator").classList.contains("active"))return;if(/[0-9+*/().%-]/.test(e.key)){expr+=e.key;$("#calcExpr").textContent=expr}if(e.key==="Enter")calc();if(e.key==="Backspace"){expr=expr.slice(0,-1);$("#calcExpr").textContent=expr}});
+$$("[data-m]").forEach(b=>b.onclick=()=>{let m=b.dataset.m;if(m==="MC")memory=0;if(m==="MR"){expr+=memory;$("#calcExpr").textContent=expr}if(m==="M+")memory+=Number($("#calcOut").textContent)||0;if(m==="M-")memory-=Number($("#calcOut").textContent)||0;toast("Memory "+m)});
+function renderMini(){$("#miniHistory").innerHTML=history.slice(0,8).map(x=>`<div class="recent-row"><small>${x.t} · ${x.e}</small><b>= ${x.r}</b></div>`).join("")||"<p class='hint'>No calculations yet.</p>"}
+function renderHistory(){$("#historyList").innerHTML=history.map(x=>`<div class="history-row"><div><small>${x.t}</small><div>${x.e}</div></div><b>${x.r}</b></div>`).join("")||"<p class='hint'>No history.</p>"}
+function clearHistory(){history=[];localStorage.removeItem("history");renderMini();renderHistory();toast("History cleared")}
+const sci=[["sin","sin"],["cos","cos"],["tan","tan"],["√","sqrt"],["log","log"],["ln","ln"],["x²","square"],["x³","cube"],["π","pi"],["e","e"],["abs","abs"],["n!","fact"]];
+$("#sciButtons").innerHTML=sci.map(x=>`<button data-s="${x[1]}">${x[0]}</button>`).join("");
+let sciMode="sqrt";$$("[data-s]").forEach(b=>b.onclick=()=>{sciMode=b.dataset.s;$$("[data-s]").forEach(x=>x.style.outline="");b.style.outline="2px solid #8b5cf6";if(["pi","e"].includes(sciMode)){let r=sciMode==="pi"?Math.PI:Math.E;$("#sciExpr").textContent=sciMode;$("#sciOut").textContent=fmt(r)}});
+$("#sciGo").onclick=()=>{let x=Number($("#sciInput").value),r;let rad=$("#angle").value==="Radians"?x:x*Math.PI/180;switch(sciMode){case"sin":r=Math.sin(rad);break;case"cos":r=Math.cos(rad);break;case"tan":r=Math.tan(rad);break;case"sqrt":r=Math.sqrt(x);break;case"log":r=Math.log10(x);break;case"ln":r=Math.log(x);break;case"square":r=x*x;break;case"cube":r=x*x*x;break;case"abs":r=Math.abs(x);break;case"fact":r=x<0||x%1?NaN:Array.from({length:x},(_,i)=>i+1).reduce((a,b)=>a*b,1);break;case"pi":r=Math.PI;break;case"e":r=Math.E}$("#sciExpr").textContent=sciMode+"("+x+")";$("#sciOut").textContent=fmt(r);addHist($("#sciExpr").textContent,fmt(r))};
+
+function num(id){return Number($(id).value)||0}function out(id,s){$(id).textContent=s}
+function simpleInterest(){let p=num("#siP"),r=num("#siR"),t=num("#siT"),i=p*r*t/100;out("#siO",`Interest: ₹${fmt(i)} · Total: ₹${fmt(p+i)}`)}
+function compoundInterest(){let p=num("#ciP"),r=num("#ciR")/100,t=num("#ciT"),n=num("#ciN")||12,a=p*Math.pow(1+r/n,n*t);out("#ciO",`Amount: ₹${fmt(a)} · Interest: ₹${fmt(a-p)}`)}
+function emi(){let p=num("#emiP"),r=num("#emiR")/1200,n=num("#emiT")*12,m=r? p*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1):p/n;out("#emiO",`Monthly EMI: ₹${fmt(m)} · Total: ₹${fmt(m*n)}`)}
+function gst(){let p=num("#gstP"),r=num("#gstR"),g=p*r/100;out("#gstO",`GST: ₹${fmt(g)} · Total: ₹${fmt(p+g)}`)}
+function discount(){let p=num("#disP"),r=num("#disR"),d=p*r/100;out("#disO",`Discount: ₹${fmt(d)} · Final: ₹${fmt(p-d)}`)}
+function profit(){let c=num("#plC"),s=num("#plS"),d=s-c,p=Math.abs(d)/c*100;out("#plO",d>=0?`Profit: ₹${fmt(d)} (${fmt(p)}%)`:`Loss: ₹${fmt(-d)} (${fmt(p)}%)`)}
+function sip(){let p=num("#sipP"),r=num("#sipR")/1200,n=num("#sipT")*12,a=r?p*((Math.pow(1+r,n)-1)/r)*(1+r):p*n;out("#sipO",`Estimated value: ₹${fmt(a)} · Invested: ₹${fmt(p*n)}`)}
+function percentage(){out("#pctO",`${fmt(num("#pctA")*num("#pctB")/100)}`)}
+function gcd(a,b){while(b)[a,b]=[b,a%b];return Math.abs(a)}function hcfLcm(){let a=num("#hA"),b=num("#hB"),g=gcd(a,b),l=a&&b?Math.abs(a*b)/g:0;out("#hO",`HCF: ${g} · LCM: ${l}`)}
+function average(){let a=$("#avg").value.split(",").map(Number).filter(Number.isFinite);out("#avgO",a.length?`Average: ${fmt(a.reduce((x,y)=>x+y,0)/a.length)}`:"Enter comma-separated numbers")}
+function quadratic(){let a=num("#qa"),b=num("#qb"),c=num("#qc"),d=b*b-4*a*c;if(!a)return out("#qO","a cannot be 0");if(d<0)return out("#qO","No real roots");out("#qO",`x₁ = ${fmt((-b+Math.sqrt(d))/(2*a))} · x₂ = ${fmt((-b-Math.sqrt(d))/(2*a))}`)}
+function isPrime(){let n=Math.floor(num("#prime")),p=n>1;for(let i=2;i*i<=n;i++)if(n%i===0)p=false;out("#primeO",p?`${n} is prime`:`${n} is not prime`)}
+function parseFrac(s){let[a,b]=s.split("/").map(Number);return[a,b]}function fraction(){try{let[a,b]=parseFrac($("#f1").value),[c,d]=parseFrac($("#f2").value),o=$("#fop").value,n=o==="+"?a*d+c*b:o==="−"?a*d-c*b:o==="×"?a*c:a*d,den=o==="×"?b*d:b*(o==="÷"?c:d);let g=gcd(n,den);out("#fO",`${n/g}/${den/g}`)}catch{out("#fO","Use format a/b")}}
+const data={Length:{m:1,cm:.01,km:1000,mi:1609.344,ft:.3048,in:.0254},Weight:{g:1,kg:1000,lb:453.59237,oz:28.3495},Area:{m²:1,km²:1e6,ft²:.092903,acre:4046.856},Speed:{m/s:1,km/h:1/3.6,mph:.44704},Volume:{L:1,mL:.001,m³:1000,gal:3.78541},Time:{sec:1,min:60,hour:3600,day:86400},Data:{B:1,KB:1024,MB:1048576,GB:1073741824,TB:1099511627776},Pressure:{Pa:1,kPa:1000,bar:100000,atm:101325},Temperature:null};
+$("#convCat").innerHTML=Object.keys(data).map(x=>`<option>${x}</option>`).join("");
+function setupConv(){let c=$("#convCat").value,u=c==="Temperature"?["Celsius","Fahrenheit","Kelvin"]:Object.keys(data[c]);$("#convFrom").innerHTML=u.map(x=>`<option>${x}</option>`).join("");$("#convTo").innerHTML=u.map(x=>`<option>${x}</option>`).join("");if(u[1])$("#convTo").selectedIndex=1;convert()}
+function convert(){let c=$("#convCat").value,v=num("#convVal"),a=$("#convFrom").value,b=$("#convTo").value,r;if(c==="Temperature"){let k=a==="Celsius"?v+273.15:a==="Fahrenheit"?(v-32)*5/9+273.15:v;r=b==="Celsius"?k-273.15:b==="Fahrenheit"?(k-273.15)*9/5+32:k}else r=v*data[c][a]/data[c][b];r=Number(r.toPrecision(precision));$("#convResult").value=r;$("#convText").textContent=`${v} ${a} = ${r} ${b}`}
+$("#convCat").onchange=setupConv;$("#convVal").oninput=convert;$("#convFrom").onchange=convert;$("#convTo").onchange=convert;setupConv();
+function ageCalc(){let d=new Date($("#dob").value),a=new Date($("#asof").value);if(isNaN(d)||isNaN(a))return out("#ageO","Select both dates");let y=a.getFullYear()-d.getFullYear(),m=a.getMonth()-d.getMonth(),day=a.getDate()-d.getDate();if(day<0){m--;day+=new Date(a.getFullYear(),a.getMonth(),0).getDate()}if(m<0){y--;m+=12}out("#ageO",`${y} years, ${m} months, ${day} days`)}
+function dateDiff(){let a=new Date($("#d1").value),b=new Date($("#d2").value);if(isNaN(a)||isNaN(b))return out("#dateO","Select both dates");let days=Math.abs(Math.round((b-a)/86400000));out("#dateO",`${days} days · ${fmt(days/7)} weeks`)}
+function save(k,v){localStorage.setItem(k,v)}
+$("#themeSelect").value=document.body.classList.contains("light")?"light":"dark";$("#precision").value=precision;$("#sound").value=localStorage.getItem("sound")||"off";
+$("#themeSelect").onchange=e=>{document.body.classList.toggle("light",e.target.value==="light");save("theme",e.target.value)};$("#precision").onchange=e=>{precision=+e.target.value;save("precision",precision)};$("#sound").onchange=e=>save("sound",e.target.value);
+function resetAll(){localStorage.clear();location.reload()}function toast(s){let t=$("#toast");t.textContent=s;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1400)}
+$("#year").textContent=new Date().getFullYear();renderMini();
