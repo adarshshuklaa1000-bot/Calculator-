@@ -1,0 +1,12 @@
+{
+  "name": "Free Study Calculator Pro",
+  "short_name": "FS Calculator",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#050914",
+  "theme_color": "#08bfff",
+  "description": "Free Study all-in-one calculator suite",
+  "icons": [
+    {"src":"calculator-logo.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
